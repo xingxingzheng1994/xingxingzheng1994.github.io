@@ -1,0 +1,1672 @@
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uber 系统设计 - 交互式学习平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 50px rgba(0,0,0,0.3);
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .nav-item {
+            padding: 12px 15px;
+            margin: 5px 0;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-size: 14px;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: #34495e;
+            border-left-color: #3498db;
+        }
+
+        .nav-item.active {
+            background: #3498db;
+            border-left-color: #fff;
+            font-weight: bold;
+        }
+
+        .nav-item.sub {
+            padding-left: 30px;
+            font-size: 13px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 40px 60px;
+            overflow-y: auto;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .hero p {
+            font-size: 20px;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin: 30px 0 20px;
+            font-size: 32px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #34495e;
+            margin: 25px 0 15px;
+            font-size: 24px;
+        }
+
+        p {
+            line-height: 1.8;
+            margin: 15px 0;
+            color: #555;
+            font-size: 16px;
+        }
+
+        .thinking-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .thinking-box h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .answer-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .answer-box h4 {
+            color: #0c5460;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .answer-content {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .answer-box.expanded .answer-content {
+            display: block;
+        }
+
+        .answer-box::after {
+            content: "▼ 点击展开答案";
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 12px;
+            color: #0c5460;
+        }
+
+        .answer-box.expanded::after {
+            content: "▲ 收起答案";
+        }
+
+        .interview-tip {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .interview-tip h4 {
+            color: #155724;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .warning-box {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .warning-box h4 {
+            color: #721c24;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        ul, ol {
+            margin: 15px 0 15px 30px;
+            line-height: 1.8;
+        }
+
+        li {
+            margin: 8px 0;
+            color: #555;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .progress-indicator {
+            background: #e9ecef;
+            height: 4px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .progress-bar {
+            background: #3498db;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #3498db;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+    
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+        mermaid.contentLoaded();
+    </script>
+</head>
+<body>
+    <div class="progress-indicator">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <h2>📚 学习导航</h2>
+            <div class="nav-item active" data-page="home">🏠 开始学习</div>
+            <div class="nav-item" data-page="ch1">第1章：系统设计的本质</div>
+            <div class="nav-item sub" data-page="ch1-1">1.1 为什么是 Uber?</div>
+            <div class="nav-item sub" data-page="ch1-2">1.2 这不是编程题</div>
+            <div class="nav-item" data-page="ch2">第2章：需求到边界</div>
+            <div class="nav-item sub" data-page="ch2-1">2.1 功能需求拆解</div>
+            <div class="nav-item sub" data-page="ch2-2">2.2 非功能需求的权衡</div>
+            <div class="nav-item" data-page="ch3">第3章：容量估算</div>
+            <div class="nav-item sub" data-page="ch3-1">3.1 为什么要算容量?</div>
+            <div class="nav-item sub" data-page="ch3-2">3.2 从 DAU 到服务器</div>
+            <div class="nav-item" data-page="ch4">第4章：数据模型设计</div>
+            <div class="nav-item sub" data-page="ch4-1">4.1 核心实体关系</div>
+            <div class="nav-item sub" data-page="ch4-2">4.2 查询驱动设计</div>
+            <div class="nav-item" data-page="ch5">第5章：关键流程</div>
+            <div class="nav-item sub" data-page="ch5-1">5.1 位置更新与搜索</div>
+            <div class="nav-item sub" data-page="ch5-2">5.2 匹配与确认</div>
+            <div class="nav-item" data-page="ch6">第6章：架构权衡</div>
+            <div class="nav-item sub" data-page="ch6-1">6.1 CAP 与一致性</div>
+            <div class="nav-item sub" data-page="ch6-2">6.2 缓存策略</div>
+            <div class="nav-item" data-page="ch7">第7章：高峰场景</div>
+            <div class="nav-item sub" data-page="ch7-1">7.1 虚拟队列设计</div>
+            <div class="nav-item sub" data-page="ch7-2">7.2 并发一致性</div>
+            <div class="nav-item" data-page="ch8">第8章：面试策略</div>
+            <div class="nav-item sub" data-page="ch8-1">8.1 如何讲述设计</div>
+            <div class="nav-item sub" data-page="ch8-2">8.2 常见追问</div>
+        </div>
+
+        <div class="content" id="mainContent">
+            <!-- 首页 -->
+            <div class="page-content active" id="home">
+                <div class="hero">
+                    <h1>🚗 Uber 系统设计学习平台</h1>
+                    <p>从零开始,手把手带你理解百万级 QPS 的乘车系统是如何设计的</p>
+                    <p style="margin-top: 20px; font-size: 16px;">不是死记硬背,而是理解每一个决策背后的"为什么"</p>
+                </div>
+
+                <h2>👋 欢迎来到系统设计课堂</h2>
+                <p>这不是一份设计文档的简单展示,而是一个<strong>交互式学习工具</strong>。</p>
+                <p>我会像一个架构师带实习生一样,一步步带你理解:</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🤔 为什么这样设计</h4>
+                        <p>每个技术选型背后的原因</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>⚖️ 如何做权衡</h4>
+                        <p>没有完美方案,只有最适合的</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>💡 面试怎么讲</h4>
+                        <p>45分钟内清晰表达你的思路</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔍 深度与广度</h4>
+                        <p>知道何时展开,何时收敛</p>
+                    </div>
+                </div>
+
+                <h3>📖 如何使用这个平台</h3>
+                <ol>
+                    <li><strong>顺序学习:</strong> 从第1章开始,按顺序阅读,每章都有前置知识依赖</li>
+                    <li><strong>主动思考:</strong> 看到"思考题"时,先不要急着看答案,给自己2分钟想一想</li>
+                    <li><strong>展开答案:</strong> 点击蓝色的"答案框"查看标准讲解</li>
+                    <li><strong>关注面试点:</strong> 绿色的"面试提示"框标注了高频考点</li>
+                    <li><strong>注意警告:</strong> 红色的"警告框"是新手最容易踩的坑</li>
+                </ol>
+
+                <h3>🎯 学完后你能收获什么</h3>
+                <ul>
+                    <li>✅ 理解如何从需求推导出架构设计</li>
+                    <li>✅ 掌握容量估算的实用方法(不只是算数字)</li>
+                    <li>✅ 学会在一致性、性能、可用性之间做权衡</li>
+                    <li>✅ 能够在面试中流畅地讲述一个完整的系统设计</li>
+                    <li>✅ 知道面试官会在哪里追问,如何应对</li>
+                </ul>
+
+                <div class="interview-tip">
+                    <h4>💼 面试官视角</h4>
+                    <p>系统设计面试不是在考你"背答案",而是在看:</p>
+                    <ul>
+                        <li>你能否理解业务需求并转化为技术问题</li>
+                        <li>你能否在有限时间内抓住核心矛盾</li>
+                        <li>你能否解释自己的选择(不是"我觉得",而是"因为...所以...")</li>
+                        <li>你能否听懂面试官的暗示并调整方向</li>
+                    </ul>
+                </div>
+
+                <h3>🚀 准备好了吗?</h3>
+                <p>点击左侧的<strong>「第1章:系统设计的本质」</strong>开始学习吧!</p>
+                <p>记住:系统设计没有标准答案,但有正确的思考方式。</p>
+            </div>
+
+            <!-- 第1章 -->
+            <div class="page-content" id="ch1">
+                <h2>第1章:系统设计的本质</h2>
+                <p>在开始设计 Uber 之前,我们需要先理解一件事:<strong>系统设计到底在考什么?</strong></p>
+                <p>很多人以为系统设计就是"画画图,说说技术栈",这是错的。</p>
+
+                <h3>🎯 本章学习目标</h3>
+                <ul>
+                    <li>理解系统设计面试的真实意图</li>
+                    <li>学会从业务问题到技术问题的转化</li>
+                    <li>掌握系统设计的基本思维框架</li>
+                </ul>
+
+                <div class="thinking-box">
+                    <h4>🤔 思考:如果让你设计 Uber,你会从哪里开始?</h4>
+                    <p>给自己1分钟,想想看:</p>
+                    <ul>
+                        <li>你会先想什么问题?</li>
+                        <li>你会先设计什么部分?</li>
+                        <li>你觉得最难的部分是什么?</li>
+                    </ul>
+                </div>
+
+                <div class="answer-box">
+                    <h4>💡 标准思路</h4>
+                    <div class="answer-content">
+                        <p>大多数人的第一反应是:</p>
+                        <ul>
+                            <li>"用什么数据库存司机位置?"</li>
+                            <li>"怎么实现地理位置搜索?"</li>
+                            <li>"用什么消息队列?"</li>
+                        </ul>
+                        <p><strong>这些都太早了!</strong></p>
+                        <p>正确的起点应该是:</p>
+                        <ol>
+                            <li><strong>明确问题边界:</strong> Uber 的核心功能是什么?我们要解决哪些场景?</li>
+                            <li><strong>量化规模:</strong> 多少用户?多少 QPS?数据量多大?</li>
+                            <li><strong>找到瓶颈:</strong> 什么地方会成为性能瓶颈?</li>
+                            <li><strong>设计方案:</strong> 针对瓶颈设计解决方案</li>
+                        </ol>
+                        <p>技术选型是<strong>最后一步</strong>,不是第一步。</p>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h4>⚠️ 新手常见错误</h4>
+                    <ul>
+                        <li>❌ 一上来就说"用 Redis 缓存"→ 为什么要缓存?缓存什么?</li>
+                        <li>❌ 直接画微服务架构图 → 为什么要拆服务?拆几个?</li>
+                        <li>❌ 说"用 Kafka 做消息队列"→ 什么场景需要异步?</li>
+                    </ul>
+                    <p>记住:<strong>先问题,后方案</strong>。</p>
+                </div>
+            </div>
+
+            <div class="page-content" id="ch1-1">
+                <h2>1.1 为什么选 Uber 作为案例?</h2>
+                <p>Uber 是一个<strong>经典的分布式系统设计案例</strong>,因为它几乎覆盖了所有核心考点:</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📍 地理位置</h4>
+                        <p>如何高效存储和查询数百万司机的实时位置?</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>⚡ 高并发</h4>
+                        <p>百万级 QPS 下如何保证系统不崩溃?</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔒 一致性</h4>
+                        <p>如何防止一个司机被匹配给多个乘客?</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🌊 峰值流量</h4>
+                        <p>演唱会散场时如何应对流量暴增?</p>
+                    </div>
+                </div>
+
+                <div class="thinking-box">
+                    <h4>🤔 思考:Uber 和电商系统有什么不同?</h4>
+                    <p>提示:想想数据的特点</p>
+                </div>
+
+                <div class="answer-box">
+                    <h4>💡 关键差异</h4>
+                    <div class="answer-content">
+                        <table>
+                            <tr>
+                                <th>维度</th>
+                                <th>电商系统</th>
+                                <th>Uber 系统</th>
+                            </tr>
+                            <tr>
+                                <td>数据特点</td>
+                                <td>商品信息相对静态</td>
+                                <td>司机位置高频变化(每4秒)</td>
+                            </tr>
+                            <tr>
+                                <td>查询模式</td>
+                                <td>按 ID/类别查询</td>
+                                <td>地理位置范围查询</td>
+                            </tr>
+                            <tr>
+                                <td>一致性要求</td>
+                                <td>库存扣减需要强一致</td>
+                                <td>位置可最终一致,匹配需强一致</td>
+                            </tr>
+                            <tr>
+                                <td>峰值特点</td>
+                                <td>双11 可预测</td>
+                                <td>演唱会散场不可预测</td>
+                            </tr>
+                        </table>
+                        <p><strong>核心挑战:</strong> Uber 是一个<strong>时空数据 + 高并发写</strong>的系统,这决定了架构必须针对性优化。</p>
+                    </div>
+                </div>
+
+                <div class="interview-tip">
+                    <h4>💼 面试中如何回答</h4>
+                    <p>如果面试官问:"为什么 Uber 的设计和电商不一样?"</p>
+                    <p><strong>好的回答:</strong></p>
+                    <p>"Uber 的核心挑战在于<strong>实时位置数据的高频更新</strong>。司机每4秒上报一次位置,300万司机意味着每秒75万次写入。这和电商的'读多写少'完全相反,所以我们需要针对<strong>写密集 + 地理查询</strong>优化架构。"</p>
+                </div>
+            </div>
+
+            <div class="page-content" id="ch1-2">
+                <h2>1.2 这不是编程题</h2>
+                <p>系统设计面试和算法题最大的区别是:<strong>没有标准答案</strong>。</p>
+                <p>面试官不是在找"正确的架构图",而是在看你的<strong>思考过程</strong>。</p>
+
+                <h3>📊 系统设计的评分维度</h3>
+                <table>
+                    <tr>
+                        <th>维度</th>
+                        <th>权重</th>
+                        <th>考察点</th>
+                    </tr>
+                    <tr>
+                        <td>需求理解</td>
+                        <td>20%</td>
+                        <td>能否问出关键问题,明确边界</td>
+                    </tr>
+                    <tr>
+                        <td>权衡能力</td>
+                        <td>30%</td>
+                        <td>能否解释为什么选A不选B</td>
+                    </tr>
+                    <tr>
+                        <td>深度</td>
+                        <td>25%</td>
+                        <td>关键路径能否讲清楚细节</td>
+                    </tr>
+                    <tr>
+                        <td>沟通</td>
+                        <td>15%</td>
+                        <td>能否清晰表达,听懂暗示</td>
+                    </tr>
+                    <tr>
+                        <td>广度</td>
+                        <td>10%</td>
+                        <td>能否覆盖监控、安全等</td>
+                    </tr>
+                </table>
+
+                <div class="warning-box">
+                    <h4>⚠️ 面试中的致命错误</h4>
+                    <ol>
+                        <li><strong>不问需求就开始设计</strong>
+                            <ul>
+                                <li>❌ "我们用微服务架构..."</li>
+                                <li>✅ "请问预期的 DAU 是多少?地理范围是全球还是单个城市?"</li>
+                            </ul>
+                        </li>
+                        <li><strong>列技术栈不讲原因</strong>
+                            <ul>
+                                <li>❌ "用 Redis、Kafka、Cassandra"</li>
+                                <li>✅ "因为位置更新频繁,我选择 Redis 作为热数据缓存,TTL 4秒..."</li>
+                            </ul>
+                        </li>
+                        <li><strong>陷入细节不能自拔</strong>
+                            <ul>
+                                <li>❌ 花20分钟讲数据库分片算法</li>
+                                <li>✅ "分片用哈希,具体算法可以用一致性哈希,咱们先看看匹配流程"</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="interview-tip">
+                    <h4>💼 时间分配建议(45分钟面试)</h4>
+                    <ul>
+                        <li><strong>5分钟:</strong> 澄清需求,确认边界</li>
+                        <li><strong>5分钟:</strong> 容量估算(粗略即可)</li>
+                        <li><strong>10分钟:</strong> 高层架构 + 核心流程</li>
+                        <li><strong>15分钟:</strong> 深入1-2个关键问题(如并发匹配)</li>
+                        <li><strong>10分钟:</strong> 优化、权衡、追问</li>
+                    </ul>
+                    <p>记住:<strong>广度优先,深度按需</strong>。先把整体框架讲清楚,再根据面试官兴趣深入。</p>
+                </div>
+            </div>
+
+            <!-- 第2章 -->
+            <div class="page-content" id="ch2">
+                <h2>第2章:从需求到设计边界</h2>
+                <p>现在正式开始设计 Uber。第一步不是画图,而是<strong>明确需求</strong>。</p>
+                <p>很多人觉得这一步简单,其实这是最容易拉开差距的地方。</p>
+
+                <h3>🎯 本章学习目标</h3>
+                <ul>
+                    <li>学会如何拆解功能需求</li>
+                    <li>理解非功能需求的优先级</li>
+                    <li>掌握"什么该做,什么不做"的边界判断</li>
+                </ul>
+
+                <div class="thinking-box">
+                    <h4>🤔 思考:Uber 的核心功能是什么?</h4>
+                    <p>用一句话概括,最多20个字。</p>
+                </div>
+
+                <div class="answer-box">
+                    <h4>💡 答案</h4>
+                    <div class="answer-content">
+                        <p><strong>"连接乘客和司机,提供按需乘车服务"</strong></p>
+                        <p>这句话包含三个关键信息:</p>
+                        <ol>
+                            <li><strong>连接</strong> → 需要匹配算法</li>
+                            <li><strong>按需</strong> → 实时性要求高</li>
+                            <li><strong>乘车服务</strong> → 涉及位置、支付、评价等</li>
+                        </ol>
+                        <p>但我们不可能在45分钟内设计所有功能,所以需要<strong>划定范围</strong>。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-content" id="ch2-1">
+                <h2>2.1 功能需求拆解</h2>
+                <p>Uber 是一个连接乘客和司机，提供按需乘车服务的全球平台，支持移动端请求乘车、匹配司机、实时跟踪及支付。本文档以结构化方法设计一个高可扩展、高并发的乘车系统，涵盖需求分析、容量估算、数据模型、架构组件及优化策略。设计重点包括一致性、可扩展性和优化用户体验。</p>
+                <ul>
+                    <li><strong>更新司机位置</strong>: 司机定期发送当前位置（每 4 秒）。系统更新位置信息，并用于匹配乘客。</li>
+                    <li><strong>查找附近的司机</strong>: 乘客按位置搜索附近可用司机。返回列表，包含司机基本信息（ID、姓名、车辆类型、评分）。</li>
+                    <li><strong>请求乘车</strong>: 匹配：乘客输入下车地点后，系统匹配附近司机。确认：司机接受后，行程开始，乘客看到预计到达时间（ETA）。</li>
+                    <li><strong>扩展功能（可选，暂不讨论）</strong>: 查看行程历史、评价司机/乘客、提前预约行程。</li>
+                </ul>
+            </div>
+
+            <div class="page-content" id="ch2-2">
+                <h2>2.2 非功能需求的权衡</h2>
+                <ul>
+                    <li><strong>可扩展性</strong>: 支持高峰流量，如特殊活动期间的百万级并发请求。</li>
+                    <li><strong>可用性</strong>: 匹配和跟踪功能保持 99.99% 正常运行。</li>
+                    <li><strong>性能</strong>: 响应时间 <1 秒，匹配响应 <500 ms。</li>
+                    <li><strong>可靠性</strong>: 数据不丢失，故障恢复时间 <1 分钟。</li>
+                    <li><strong>安全性（可选，暂不讨论）</strong>: 防止刷单（速率限制、CAPTCHA）。遵守数据保护规范（加密、用户同意）。</li>
+                    <li><strong>优先级</strong>: Availability-first at system level, with CP guarantees for critical paths (matching & payment)。</li>
+                </ul>
+            </div>
+
+            <!-- 第3章 -->
+            <div class="page-content" id="ch3">
+                <h2>第3章：容量估算</h2>
+                <p>目标：量化记录规模、存储量、分片数和缓存需求，为后续设计提供依据。</p>
+            </div>
+
+            <div class="page-content" id="ch3-1">
+                <h2>3.1 为什么要算容量?</h2>
+                <p>容量估算是系统设计的基础，它帮助我们理解系统的规模、潜在瓶颈，并指导硬件和架构选择。没有容量估算，设计容易脱离实际，导致过度或不足优化。</p>
+                <div class="thinking-box">
+                    <h4>🤔 思考:为什么容量估算不是简单算数字?</h4>
+                    <p>提示:想想它如何影响后续决策。</p>
+                </div>
+                <div class="answer-box">
+                    <h4>💡 答案</h4>
+                    <div class="answer-content">
+                        <p>容量估算不仅仅是计算数字，它帮助识别瓶颈（如存储 vs 计算），指导分片、缓存策略，并评估成本。忽略它可能导致系统在高峰崩溃或资源浪费。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-content" id="ch3-2">
+                <h2>3.2 从 DAU 到服务器</h2>
+                <p>容量估算的目的是<strong>量化系统的规模需求</strong>，为技术选型提供依据。我们从 DAU（日活跃用户）开始，逐步推导出 QPS、存储、分片数和硬件需求。</p>
+                
+                <h3>📊 第一步：基础假设</h3>
+                <div class="thinking-box">
+                    <h4>我们需要假设什么？</h4>
+                    <p>任何估算都基于一些合理的假设。这些假设越准确，估算结果越可靠。</p>
+                </div>
+                
+                <table>
+                    <tr>
+                        <th>指标</th>
+                        <th>数值</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><strong>日活跃用户 (DAU)</strong></td>
+                        <td>2000 万乘客 + 300 万司机</td>
+                        <td>全球主要城市的活跃用户数</td>
+                    </tr>
+                    <tr>
+                        <td><strong>每用户每秒请求数</strong></td>
+                        <td>0.02 req/s（峰值）</td>
+                        <td>平时低于此值，高峰期达到此值</td>
+                    </tr>
+                    <tr>
+                        <td><strong>每天行程数</strong></td>
+                        <td>2000 万次</td>
+                        <td>乘客请求乘车的总次数</td>
+                    </tr>
+                </table>
+                
+                <h3>📈 第二步：计算峰值 QPS</h3>
+                <div class="answer-box">
+                    <h4>🔍 核心问题：为什么要计算 QPS？</h4>
+                    <div class="answer-content">
+                        <p>QPS（每秒查询数）直接决定了系统需要多少台服务器、什么样的数据库。如果估算错误，可能导致：</p>
+                        <ul>
+                            <li>估算过低 → 服务器不足，系统崩溃</li>
+                            <li>估算过高 → 浪费资源，成本上升</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <p><strong>计算公式：</strong></p>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">峰值 QPS = DAU × 每用户每秒请求数</code></pre>
+                
+                <p><strong>具体计算：</strong></p>
+                <ol>
+                    <li><strong>乘客请求 QPS</strong>
+                        <ul>
+                            <li>乘客 DAU：2000 万</li>
+                            <li>每乘客每秒请求数：0.02</li>
+                            <li>计算：2000 万 × 0.02 = <strong>400k QPS</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>司机位置更新 QPS</strong>
+                        <ul>
+                            <li>司机 DAU：300 万</li>
+                            <li>每司机每秒更新数：0.25（每 4 秒更新一次）</li>
+                            <li>计算：300 万 × 0.25 = <strong>75k QPS</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>其他操作（支付、历史查询等）</strong>
+                        <ul>
+                            <li>估计：<strong>275k QPS</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>总峰值 QPS</strong>
+                        <ul>
+                            <li>计算：400k + 75k + 275k = <strong>750k QPS</strong></li>
+                            <li>加上缓冲（50%）：750k × 1.5 = <strong>~1M QPS</strong></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <p><strong>读写比例分析：</strong></p>
+                <ul>
+                    <li>读操作（查询附近司机、查历史）：约 50k QPS</li>
+                    <li>写操作（位置更新、匹配、支付）：约 750k QPS</li>
+                    <li><strong>读写比 = 1:15</strong>（写操作为主）</li>
+                </ul>
+                
+                <h3>💾 第三步：计算存储需求</h3>
+                <p><strong>计算公式：</strong></p>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">3 年总行程数 = 每天行程数 × 365 天 × 3 年</code></pre>
+                
+                <p><strong>具体计算：</strong></p>
+                <ol>
+                    <li><strong>3 年总行程数</strong>
+                        <ul>
+                            <li>计算：2000 万 × 365 × 3 = <strong>21.9 亿次</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>每条行程记录大小</strong>
+                        <ul>
+                            <li>tripID (UUID)：16 B</li>
+                            <li>riderID、driverID：32 B</li>
+                            <li>坐标、时间戳、状态等：100 B</li>
+                            <li>总计：约 <strong>150 B/条</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>Trips 表原始数据大小</strong>
+                        <ul>
+                            <li>计算：21.9 亿 × 150 B ÷ 1024³ = <strong>2.2 TB</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>加上索引（约 30%）</strong>
+                        <ul>
+                            <li>计算：2.2 TB × 0.3 = <strong>0.66 TB</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>加上副本（2 份备份）</strong>
+                        <ul>
+                            <li>计算：(2.2 + 0.66) × 2 = <strong>5.72 TB</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>其他表（Riders、Drivers、DriverLocations）</strong>
+                        <ul>
+                            <li>估计：<strong>3 TB</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>总存储需求</strong>
+                        <ul>
+                            <li>计算：5.72 + 3 = <strong>8.72 TB</strong></li>
+                            <li>加上 20% 增长缓冲：8.72 × 1.2 = <strong>~10.5 TB</strong></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h3>🔀 第四步：计算分片数</h3>
+                <p><strong>核心问题：为什么要分片？</strong></p>
+                <p>单台数据库无法处理 750k 写 QPS。通过分片，我们将数据分散到多台机器，每台机器只处理一部分数据和请求。</p>
+                
+                <p><strong>计算公式：</strong></p>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">分片数 = 峰值写 QPS ÷ 单分片承载 QPS</code></pre>
+                
+                <p><strong>具体计算：</strong></p>
+                <ol>
+                    <li><strong>单分片承载能力</strong>
+                        <ul>
+                            <li>假设单台 Cassandra 节点可承载：1k QPS</li>
+                        </ul>
+                    </li>
+                    <li><strong>需要的分片数</strong>
+                        <ul>
+                            <li>计算：750k ÷ 1k = <strong>750 个分片</strong></li>
+                            <li>加上 50% 冗余和高可用：750 × 1.5 = <strong>~1000 个分片</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>每分片的数据量</strong>
+                        <ul>
+                            <li>计算：8.72 TB ÷ 1000 = <strong>8.72 GB/分片</strong></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h3>🖥️ 第五步：计算硬件需求</h3>
+                <p><strong>计算公式：</strong></p>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">服务器数 = 峰值 QPS ÷ 单服务器承载 QPS</code></pre>
+                
+                <p><strong>具体计算：</strong></p>
+                <ol>
+                    <li><strong>单服务器承载能力</strong>
+                        <ul>
+                            <li>假设单台服务器可承载：1k QPS（在 p99 < 200ms 的延迟下）</li>
+                        </ul>
+                    </li>
+                    <li><strong>高峰期服务器需求</strong>
+                        <ul>
+                            <li>计算：800k ÷ 1k = <strong>800 台服务器</strong></li>
+                            <li>加上 50% 冗余（故障转移、维护）：800 × 1.5 = <strong>~1200 台</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>平时服务器需求</strong>
+                        <ul>
+                            <li>假设平时 QPS：5k</li>
+                            <li>计算：5k ÷ 1k = <strong>5 台服务器</strong></li>
+                            <li>加上冗余：5 × 1.5 = <strong>~8 台</strong></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h3>💰 第六步：缓存需求</h3>
+                <p><strong>热点数据分析：</strong></p>
+                <ul>
+                    <li>热门位置（如机场、火车站）占查询的 <strong>80%</strong></li>
+                    <li>这些热点数据可以缓存在 Redis 中</li>
+                </ul>
+                
+                <p><strong>缓存数据量计算：</strong></p>
+                <ol>
+                    <li><strong>热门司机位置</strong>
+                        <ul>
+                            <li>热门司机数：300 万 × 20% = 60 万</li>
+                            <li>每条记录大小：50 B</li>
+                            <li>计算：60 万 × 50 B = <strong>30 MB</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>热门查询结果</strong>
+                        <ul>
+                            <li>热门查询数：100 万条</li>
+                            <li>每条结果大小：100 B</li>
+                            <li>计算：100 万 × 100 B = <strong>100 MB</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>总热点数据量</strong>
+                        <ul>
+                            <li>计算：30 + 100 = <strong>130 MB</strong></li>
+                        </ul>
+                    </li>
+                    <li><strong>Redis 内存规划</strong>
+                        <ul>
+                            <li>考虑 HA（主从复制）、内存碎片、写放大</li>
+                            <li>规划：<strong>16-32 GB</strong></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h3>📋 总结表</h3>
+                <table>
+                    <tr>
+                        <th>指标</th>
+                        <th>数值</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><strong>峰值 QPS</strong></td>
+                        <td>800k-1M</td>
+                        <td>系统必须支持的最大并发</td>
+                    </tr>
+                    <tr>
+                        <td><strong>读写比</strong></td>
+                        <td>1:15</td>
+                        <td>写操作为主，需要高写入能力的数据库</td>
+                    </tr>
+                    <tr>
+                        <td><strong>3 年存储</strong></td>
+                        <td>8.72 TB</td>
+                        <td>包括主数据、索引、副本</td>
+                    </tr>
+                    <tr>
+                        <td><strong>分片数</strong></td>
+                        <td>~1000</td>
+                        <td>每分片 8.72 GB，承载 1k QPS</td>
+                    </tr>
+                    <tr>
+                        <td><strong>高峰服务器</strong></td>
+                        <td>~1200 台</td>
+                        <td>包括冗余和故障转移</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Redis 缓存</strong></td>
+                        <td>16-32 GB</td>
+                        <td>缓存命中率 95%</td>
+                    </tr>
+                </table>
+                
+                <div class="interview-tip">
+                    <h4>💡 面试技巧</h4>
+                    <p>在面试中，<strong>不要只说数字，要说出推导过程</strong>。面试官想看的是你的思维方式，而不是记忆力。</p>
+                    <p>例如，不要说"我们需要 1000 台服务器"，而要说"根据估算，峰值 QPS 是 800k，单台服务器可承载 1k QPS，所以需要 800 台，加上 50% 冗余，大约 1200 台。"</p>
+                </div>
+            </div>
+            <!-- 第4章 -->
+            <div class="page-content" id="ch4">
+                <h2>第4章：数据模型设计</h2>
+                <p>核心实体与 API 设计。</p>
+            </div>
+
+            <div class="page-content" id="ch4-1">
+                <h2>4.1 核心实体关系</h2>
+                <ol>
+                    <li><strong>Riders（乘客）</strong>: RiderID (PK, UUID)、name、email、phone、photo</li>
+                    <li><strong>Drivers（司机）</strong>: DriverID (PK, UUID)、name、email、phone、vehicleType、rating</li>
+                    <li><strong>Trips（行程）</strong>: TripID (PK, UUID)、riderID (FK, UUID)、driverID (FK, UUID)、pickupLat、pickupLong、dropoffLat、dropoffLong、status (pending/accepted/inprogress/completed)、eta、version (乐观锁)</li>
+                    <li><strong>DriverLocations（司机位置）</strong>: DriverID (PK, UUID)、lat、long、timestamp</li>
+                </ol>
+                <p><strong>数据模型与分片策略</strong>：采用 查询驱动设计 (Query-Driven Design)，通过数据冗余满足不同维度的查询需求：</p>
+                <ol>
+                    <li><strong>Trips 表</strong>: Partition Key: tripID。用途：根据 ID 查询行程详情、状态流转。</li>
+                    <li><strong>TripsByRider 表</strong> (或物化视图): Partition Key: riderID。Clustering Key: timestamp (DESC)。用途：乘客查看“我的行程历史”。</li>
+                    <li><strong>TripsByDriver 表</strong> (或物化视图): Partition Key: driverID。Clustering Key: timestamp (DESC)。用途：司机查看“接单记录”。</li>
+                </ol>
+                <p><strong>Driver State Machine</strong>：IDLE → OFFERED → ACCEPTED → IN_TRIP → IDLE ↘ timeout / reject ↗ ACCEPTED → CANCELLED_BY_RIDER → IDLE (with penalty cooling) IN_TRIP → INCIDENT → SUPPORT_HANDLING → IDLE IN_TRIP → timeout (2 hrs) → FORCE_COMPLETE → REVIEW</p>
+                <p><strong>实体关系</strong>：Riders 一对多 Trips（requests）。Drivers 一对多 Trips（accepts）。Drivers 一对一 DriverLocations（has）。</p>
+                <div class="mermaid">erDiagram
+    Riders ||--o{ Trips : requests
+    Drivers ||--o{ Trips : accepts
+    Drivers ||--|| DriverLocations : has
+
+    Riders {
+        string riderID PK
+        string name
+        string email
+        string phone
+        blob photo
+    }
+
+    Drivers {
+        string driverID PK
+        string name
+        string email
+        string phone
+        string vehicleType
+        float rating
+    }
+
+    Trips {
+        string tripID PK
+        string riderID FK
+        string driverID FK
+        float pickupLat
+        float pickupLong
+        float dropoffLat
+        float dropoffLong
+        enum status
+        timestamp eta
+        int version
+    }
+
+    DriverLocations {
+        string driverID PK
+        float lat
+        float long
+        timestamp timestamp
+    }</div>
+            </div>
+
+            <div class="page-content" id="ch4-2">
+                <h2>4.2 查询驱动设计</h2>
+                
+                <div class="thinking-box">
+                    <h4>🤔 核心问题</h4>
+                    <p>如何设计数据模型，才能同时满足"按 ID 查行程"和"按用户查历史"这两种查询？</p>
+                </div>
+                
+                <h3>关键概念：查询驱动设计</h3>
+                <p>在传统关系型数据库中，我们追求<strong>范式化</strong>（消除冗余）。但在 NoSQL 中，我们追求<strong>反范式化</strong>（接受冗余），以满足不同的查询模式。</p>
+                
+                <h3>为什么需要多个表</h3>
+                <p><strong>场景 1：根据 tripID 查询行程详情</strong></p>
+                <ul>
+                    <li>如果只有一个 Trips 表，按 tripID 查询很快（O(1)）</li>
+                </ul>
+                
+                <p><strong>场景 2：乘客查看"我的行程历史"</strong></p>
+                <ul>
+                    <li>如果只有一个 Trips 表（按 tripID 分片），查询某个乘客的所有行程需要全表扫描（O(n)），导致延迟爆炸</li>
+                </ul>
+                
+                <p><strong>解决方案：创建多个表</strong></p>
+                <ul>
+                    <li><strong>Trips</strong>：按 tripID 分片，用于根据 ID 查询</li>
+                    <li><strong>TripsByRider</strong>：按 riderID 分片，用于乘客查历史</li>
+                    <li><strong>TripsByDriver</strong>：按 driverID 分片，用于司机查历史</li>
+                </ul>
+                <p>这样做的代价是数据冗余，但收益是查询性能的提升。</p>
+                
+                <h3>数据模型详解</h3>
+                
+                <h4>表 1：Trips（主表）</h4>
+                <p><strong>用途：</strong>根据 tripID 快速查询行程详情</p>
+                <p><strong>分片键：</strong>tripID</p>
+                
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+{
+  "tripID": "uuid-123",
+  "riderID": "rider-456",
+  "driverID": "driver-789",
+  "pickupLat": 37.7749,
+  "pickupLong": -122.4194,
+  "dropoffLat": 37.8044,
+  "dropoffLong": -122.2712,
+  "status": "completed",
+  "eta": 1200,
+  "fare": 25.50,
+  "rating": 4.8,
+  "timestamp": "2024-01-01T10:30:00Z",
+  "version": 3
+}
+                </code></pre>
+                
+                <h4>表 2：TripsByRider（查询表）</h4>
+                <p><strong>用途：</strong>乘客查看自己的行程历史</p>
+                <p><strong>分片键：</strong>riderID</p>
+                <p><strong>排序键：</strong>timestamp（降序，最新的行程在前）</p>
+                
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+{
+  "riderID": "rider-456",
+  "timestamp": "2024-01-01T10:30:00Z",
+  "tripID": "uuid-123",
+  "driverID": "driver-789",
+  "pickupLocation": "Airport Terminal 1",
+  "dropoffLocation": "Downtown Hotel",
+  "fare": 25.50,
+  "status": "completed"
+}
+                </code></pre>
+                
+                <h4>表 3：TripsByDriver（查询表）</h4>
+                <p><strong>用途：</strong>司机查看自己的行程历史</p>
+                <p><strong>分片键：</strong>driverID</p>
+                <p><strong>排序键：</strong>timestamp（降序）</p>
+                
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+{
+  "driverID": "driver-789",
+  "timestamp": "2024-01-01T10:30:00Z",
+  "tripID": "uuid-123",
+  "riderID": "rider-456",
+  "pickupLocation": "Airport Terminal 1",
+  "dropoffLocation": "Downtown Hotel",
+  "fare": 25.50,
+  "earnings": 18.00,
+  "status": "completed"
+}
+                </code></pre>
+                
+                <h3>数据同步机制</h3>
+                <p>当一个行程被创建或更新时，需要同时更新三个表。为了保证一致性，我们使用 <strong>CDC（Change Data Capture）+ Kafka</strong>：</p>
+                
+                <ol>
+                    <li>应用写入 Trips 表</li>
+                    <li>Cassandra 的 CDC 捕获这个变更</li>
+                    <li>发布事件到 Kafka</li>
+                    <li>后台服务订阅 Kafka，更新 TripsByRider 和 TripsByDriver</li>
+                </ol>
+                
+                <h3>权衡分析</h3>
+                <table>
+                    <tr>
+                        <th>方案</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                    </tr>
+                    <tr>
+                        <td><strong>单表设计</strong><br/>（只有 Trips）</td>
+                        <td>数据简洁，无冗余</td>
+                        <td>查询乘客历史需要全表扫描，延迟高</td>
+                    </tr>
+                    <tr>
+                        <td><strong>多表设计</strong><br/>（Trips + TripsByRider + TripsByDriver）</td>
+                        <td>查询快速，支持多种查询模式</td>
+                        <td>数据冗余，需要 CDC 保证一致性</td>
+                    </tr>
+                </table>
+                
+                <p><strong>我们的选择：多表设计</strong>，因为查询性能对用户体验至关重要。</p>
+                
+                <div class="interview-tip">
+                    <h4>💡 面试技巧</h4>
+                    <p>面试官可能会问："如果 TripsByRider 表和 Trips 表不一致怎么办？"</p>
+                    <p><strong>好的回答：</strong>"我们使用 CDC + Kafka 来保证最终一致性。虽然可能存在短暂的不一致（通常 <1 秒），但通过版本号机制和缓存 TTL，我们可以确保用户看到的数据是可接受的。"</p>
+                </div>
+            </div>
+            <!-- 第5章 -->
+            <div class="page-content" id="ch5">
+                <h2>第5章：关键流程</h2>
+                <p>整体采用分层微服务架构，支持水平扩展、高可用性和低延迟。客户端请求通过负载均衡器分发到独立微服务，缓存优化读性能，数据库保证一致性，消息队列处理异步任务。微服务间使用 gRPC 通信，外部 API 保持 RESTful。</p>
+            </div>
+
+            <div class="page-content" id="ch5-1">
+                <h2>5.1 位置更新与搜索</h2>
+                <ol>
+                    <li><strong>负载均衡器</strong>：AWS ELB，分发流量，支持自动扩缩和故障转移，基于路径的 L 7 路由。</li>
+                    <li><strong>微服务</strong>: 位置服务：更新并存储司机位置，使用 cell-based spatial index (e.g. S 2 / H 3) 支持地理搜索。匹配服务：POST /ride/request 和 /ride/confirm，使用 Redis 锁 + Cassandra 轻量级事务处理。行程服务：GET /ride/{tripID}，优先从 Redis 缓存读取，未命中则访问 Cassandra。ETA 服务：计算实际路网行驶时间。</li>
+                    <li><strong>缓存</strong>：Redis，存储热门位置和搜索结果，TTL 4~10 秒，命中率预期 95%。</li>
+                    <li><strong>数据库</strong>: Cassandra：主存储，按 tripID 或 (riderID, timestamp) 分片（Trips），driverID 分片（Drivers），支持轻量级事务和主从复制。Cell-based spatial index：位置索引，动态分区，结合 Redis 哈希表处理高频更新。</li>
+                    <li><strong>消息队列</strong>：Kafka，用于异步任务（支付确认、通知推送），128 分区，保留 7 天。</li>
+                    <li><strong>CDN</strong>：CloudFront，缓存静态资源（如地图数据），全球分布，延迟 <100 ms。</li>
+                    <li><strong>监控</strong>：Prometheus + Grafana，跟踪 QPS、延迟和错误率，触发 Auto Scaling。</li>
+                </ol>
+                <p>We treat driver location as ephemeral data: real-time reads go to memory, persistence is asynchronous and lossy by design. 实时位置 → Redis / in-memory geo store，Kafka 作为 buffer + async archive，Cassandra 只存 sampled / trip-scoped trajectory。Real-time search paths never depend on database replication or CDC pipelines. Persistence is asynchronous and does not block matching。</p>
+                <div class="mermaid">graph TD
+    RiderApp[乘客 App] --&gt;|HTTPS| LB[负载均衡器 AWS ELB]
+    DriverApp[司机 App] --&gt;|WebSocket| LB
+    LB --&gt;|gRPC/REST| Location[位置服务 /driver/location]
+    LB --&gt;|gRPC/REST| Matching[匹配服务 /ride/request]
+    LB --&gt;|gRPC/REST| Trip[行程服务 /ride/ID]
+    LB --&gt;|gRPC/REST| ETA[ETA 服务]
+    Location --&gt; SpatialIndex[cell-based spatial index 位置索引]
+    Trip --&gt; Redis[Redis 缓存]
+    Trip --&gt; Cassandra[Cassandra 数据库]
+    Matching --&gt; Redis[Redis 分布式锁]
+    Matching --&gt; Cassandra[事务]
+    Matching --&gt; Kafka[Kafka 异步队列]
+    Cassandra --&gt;|主从复制| Replica[Cassandra 副本]
+    SpatialIndex --&gt;|Async / Best-effort| Cassandra
+    RiderApp --&gt;|静态资源| CDN[CloudFront CDN]</div>
+                <p>存储热门位置结果（key=SHA 256 (lat+long+radius)），TTL 4 秒。命中率 95%，80% 查询来自 20% 热门位置。扩展性：Cell-based spatial index 动态分区，每分区 2 k QPS。Prometheus 监控延迟 >500 ms，触发扩容或分区优化。GDPR 合规：位置日志匿名化，用户敏感信息加密。</p>
+                <div class="mermaid">sequenceDiagram
+    participant 客户端
+    participant 位置服务
+    participant Redis
+    participant SpatialIndex
+    participant ETA
+    participant 监控
+
+    客户端-&gt;&gt;位置服务: GET /drivers/nearby?lat=37.78&amp;long=-122.41&amp;radius=5km
+    位置服务-&gt;&gt;Redis: GET cache:location:{hash(lat+long+radius)}
+    alt 缓存命中
+        Redis--&gt;&gt;位置服务: JSON 列表
+    else 缓存未命中
+        位置服务-&gt;&gt;SpatialIndex: geo query {must: available, filter: radius}
+        SpatialIndex--&gt;&gt;位置服务: 50 个候选司机
+        位置服务-&gt;&gt;ETA: Batch Call ETA 计算
+        ETA--&gt;&gt;位置服务: 路网时间
+        位置服务-&gt;&gt;Redis: SETEX cache:location:{hash} 4 JSON
+    end
+    位置服务-&gt;&gt;监控: 记录延迟
+    位置服务--&gt;&gt;客户端: {drivers: [], meta: {total}}</div>
+            </div>
+
+            <div class="page-content" id="ch5-2">
+                <h2>5.2 匹配与确认</h2>
+                <p>问题：高峰热门位置 QPS 过载。现象：特殊活动时，QPS >800 k，数据库过载，匹配延迟，用户重复请求导致流失。原因：Trips 表 21.9 亿行，读延迟 >1 秒。位置状态频繁变化，传统 API 返回静态数据，用户手动刷新造成 30% 无效请求。</p>
+                <ol>
+                    <li><strong>虚拟等待队列</strong>：Redis ZSET 管理 queue:location:{lat_long}，会员优先、随机防刷，POST /queue/join 加入，定时出队（每秒 100 用户）。</li>
+                    <li><strong>实时更新</strong>：SSE 推送队列进度和匹配状态（Kafka 广播）。</li>
+                    <li><strong>扩展性</strong>：ELB + Kubernetes Auto Scaling（CPU>80%），Cassandra 按 tripID 或 (riderID, timestamp) 分片（Trips），driverID 分片（Drivers），每分片 44 GB，1 k QPS，2 从扩展读负载。</li>
+                    <li><strong>监控</strong>：Prometheus 跟踪 QPS、延迟、错误率，动态调整出队速率。</li>
+                    <li><strong>CDN 缓存</strong>：CloudFront 缓存地图数据（TTL 1 min），延迟 <100 ms。</li>
+                </ol>
+                <p><strong>权衡</strong>：虚拟队列 vs 速率限制：队列公平、实时反馈，降低用户焦虑；速率限制简单但不透明，易增加 QPS。SSE vs 长轮询 vs WebSocket：SSE 单向、低开销，适合实时位置更新；WebSocket 内存消耗大；长轮询延迟高。选择：队列 + SSE，优先用户体验和可扩展性。</p>
+            </div>
+
+            <!-- 第6章 -->
+            <div class="page-content" id="ch6">
+                <h2>第6章：架构权衡</h2>
+                <table>
+                    <tr>
+                        <th>方案</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                    </tr>
+                    <tr>
+                        <td>QuadTree</td>
+                        <td>支持复杂地理匹配、距离排序、聚合，水平扩展，适合大规模（300 万司机，20 亿行程）</td>
+                        <td>更新频繁时分区开销大</td>
+                    </tr>
+                    <tr>
+                        <td>S 2/H 3</td>
+                        <td>固定单元格，查询均匀，适合全球覆盖</td>
+                        <td>边界查询需处理邻近单元格</td>
+                    </tr>
+                    <tr>
+                        <td>Redis 缓存</td>
+                        <td>命中率 95%，响应 <50 ms，降低 80% DB 负载</td>
+                        <td>需维护失效策略</td>
+                    </tr>
+                    <tr>
+                        <td>无缓存</td>
+                        <td>简单</td>
+                        <td>查询延迟 200-500 ms，高峰 QPS 过载</td>
+                    </tr>
+                </table>
+                <p><strong>选择</strong>：S 2/H 3 + Redis，优先性能和可扩展性，接受运维复杂性。</p>
+                <p><strong>原因</strong>：简单查询 O (n) 随司机增长线性上升，高峰 QPS 50,000 导致 CPU >90%，用户体验差。Cell-based spatial index 分区降低至 O (log n)，Redis 缓存热门查询（80% 流量）提速 10 倍，总体延迟 <200 ms。实例：Uber 使用 cell-based spatial index 支撑百万 QPS，崩溃率降 90%。</p>
+            </div>
+
+            <div class="page-content" id="ch6-1">
+                <h2>6.1 CAP 与一致性</h2>
+                <p>问题：数据一致性保证。问题：数据库（Cassandra）与位置索引（cell-based spatial index）、缓存（Redis）之间存在数据同步延迟或不一致风险。高峰期用户查询和匹配操作可能看到过期数据，导致匹配错误或搜索结果不准确。</p>
+                <p><strong>原因</strong>：Cassandra → cell-based spatial index 使用 CDC（Debezium）同步，存在 ~1 秒延迟。双写模式若处理不当，会出现写入失败或事务异常导致数据不同步。缓存更新策略不当（过期/主动失效）会产生脏数据或缓存雪崩。</p>
+                <ol>
+                    <li><strong>数据库与位置同步</strong>: 使用 CDC 捕获变更，Kafka 保证事件顺序，延迟 <1 秒。双写模式：仅在原子事务成功后写入 cell-based spatial index，保证最终一致性。版本号机制：在行程或位置记录中维护 version，每次更新递增，消费者通过 version 校验更新，防止旧数据覆盖新数据。</li>
+                    <li><strong>缓存一致性策略</strong>: Cache Aside（推荐）：应用更新数据库后主动删除缓存，下次访问重建。Write Through / Write Behind：适用于写入集中且对延迟容忍高的场景。雪崩防护：热门数据加随机 TTL、限流更新，避免大量缓存同时过期。</li>
+                    <li><strong>监控指标设计</strong>: 数据延迟监控：Cassandra → cell-based spatial index 延迟、Redis 缓存命中率。一致性校验：定期对比主库和位置索引数据，发现差异报警。告警阈值设置：延迟 >2 秒或一致性错误 >0.1% 触发通知。</li>
+                </ol>
+                <p><strong>权衡</strong>：CDC vs 双写：CDC 延迟可接受（<1 秒），系统解耦；双写强一致性，但实现复杂、易出错。缓存策略：Cache Aside 灵活、可控；Write Through 写入延迟低，但数据库压力高。选择：CDC + Cache Aside + 版本号机制，兼顾性能、可扩展性和一致性。</p>
+                <p><strong>原因</strong>：高峰期用户查询和匹配并发高，若数据不同步或缓存过期，会导致匹配错误、搜索结果不准确和用户体验下降。通过 CDC + 版本号 + Cache Aside，可确保最终一致性，延迟 <1 秒，缓存命中率 >95%，整体系统稳定性和用户体验提升。</p>
+                <div class="mermaid">sequenceDiagram
+    participant App as 应用服务
+    participant DB as Cassandra
+    participant Kafka
+    participant SI as cell-based spatial index
+    participant Redis
+
+    App-&gt;&gt;DB: 更新行程或位置状态
+    DB--&gt;&gt;Kafka: CDC event {tripID, version, data}
+    Kafka-&gt;&gt;SI: 更新索引（version 校验）
+    App-&gt;&gt;Redis: DEL cache:trip:{ID} 或 SETEX 新数据
+    App-&gt;&gt;Redis: GET 缓存查询
+    SI--&gt;&gt;App: 返回搜索结果</div>
+            </div>
+
+            <div class="page-content" id="ch6-2">
+                <h2>6.2 缓存策略</h2>
+                
+                <div class="thinking-box">
+                    <h4>🤔 核心问题</h4>
+                    <p>在高并发下，如何使用缓存来加速查询，同时保证数据一致性？</p>
+                </div>
+                
+                <h3>缓存的三个关键问题</h3>
+                <ol>
+                    <li><strong>缓存穿透</strong>：查询不存在的数据，每次都穿透到数据库</li>
+                    <li><strong>缓存雪崩</strong>：大量缓存同时失效，请求全部打到数据库</li>
+                    <li><strong>缓存一致性</strong>：缓存和数据库的数据不一致</li>
+                </ol>
+                
+                <h3>Uber 的缓存架构</h3>
+                <p><strong>缓存层次：</strong></p>
+                <ul>
+                    <li>L1 缓存：应用本地缓存（Guava Cache）- 延迟 <1ms</li>
+                    <li>L2 缓存：Redis 分布式缓存 - 延迟 <10ms</li>
+                    <li>L3 缓存：Cassandra 数据库 - 延迟 <100ms</li>
+                </ul>
+                
+                <h3>缓存策略对比</h3>
+                <table>
+                    <tr>
+                        <th>策略</th>
+                        <th>工作流程</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Cache Aside</strong><br/>（旁路缓存）</td>
+                        <td>
+                            应用先查缓存<br/>
+                            → 缓存未命中<br/>
+                            → 查数据库<br/>
+                            → 更新缓存
+                        </td>
+                        <td>
+                            灵活、可控<br/>
+                            缓存失效不影响数据库
+                        </td>
+                        <td>
+                            初次查询延迟高<br/>
+                            可能出现缓存穿透
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Write Through</strong><br/>（写穿）</td>
+                        <td>
+                            应用写缓存<br/>
+                            → 缓存写数据库<br/>
+                            → 返回结果
+                        </td>
+                        <td>
+                            数据一致性强<br/>
+                            不会出现缓存穿透
+                        </td>
+                        <td>
+                            写入延迟高<br/>
+                            数据库压力大
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Write Behind</strong><br/>（写回）</td>
+                        <td>
+                            应用写缓存<br/>
+                            → 立即返回<br/>
+                            → 异步写数据库
+                        </td>
+                        <td>
+                            写入延迟低<br/>
+                            吞吐量高
+                        </td>
+                        <td>
+                            数据一致性弱<br/>
+                            可能丢失数据
+                        </td>
+                    </tr>
+                </table>
+                
+                <p><strong>Uber 的选择：Cache Aside + 版本号机制</strong></p>
+                
+                <h3>Cache Aside 详解</h3>
+                <h4>读流程</h4>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+1. GET cache:trip:{tripID}
+   ├─ 命中 → 返回数据（延迟 <10ms）
+   └─ 未命中 → 继续
+   
+2. SELECT * FROM Trips WHERE tripID = X
+   ├─ 查询成功 → 继续
+   └─ 查询失败 → 返回错误
+   
+3. SET cache:trip:{tripID} data EX 300
+   └─ 设置 TTL 5 分钟
+   
+4. 返回数据给应用
+                </code></pre>
+                
+                <h4>写流程</h4>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+1. UPDATE Trips SET status = 'completed', version = version + 1 WHERE tripID = X
+   └─ 更新成功 → 继续
+   
+2. DEL cache:trip:{tripID}
+   └─ 删除缓存（强制下次查询从数据库读取）
+   
+3. 发布 CDC 事件到 Kafka
+   └─ 其他服务订阅并更新自己的缓存
+                </code></pre>
+                
+                <h3>缓存穿透解决方案</h3>
+                <p><strong>问题：</strong>查询一个不存在的 tripID，每次都穿透到数据库，浪费资源。</p>
+                
+                <p><strong>解决方案 1：缓存空值</strong></p>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+// 查询结果为空时，也缓存一个特殊值
+SET cache:trip:{tripID} "NOT_FOUND" EX 60
+// TTL 设置较短（60 秒），避免长期占用内存
+                </code></pre>
+                
+                <p><strong>解决方案 2：布隆过滤器</strong></p>
+                <ul>
+                    <li>在 Redis 中维护一个布隆过滤器，包含所有有效的 tripID</li>
+                    <li>查询前先检查布隆过滤器，不存在则直接返回错误</li>
+                    <li>优点：节省内存，查询快速</li>
+                </ul>
+                
+                <h3>缓存雪崩解决方案</h3>
+                <p><strong>问题：</strong>大量缓存同时失效（如 Redis 重启），请求全部打到数据库，导致数据库宕机。</p>
+                
+                <p><strong>解决方案 1：随机 TTL</strong></p>
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+// 不使用固定 TTL，而是随机 TTL
+base_ttl = 300  // 5 分钟
+random_ttl = base_ttl + random(0, 100)  // 5-6.67 分钟
+SET cache:trip:{tripID} data EX random_ttl
+                </code></pre>
+                
+                <p><strong>解决方案 2：热点数据永不过期</strong></p>
+                <ul>
+                    <li>对于热点数据（如机场附近的司机），设置 TTL 为无穷大</li>
+                    <li>通过后台任务定期刷新这些数据</li>
+                </ul>
+                
+                <p><strong>解决方案 3：缓存预热</strong></p>
+                <ul>
+                    <li>系统启动时，预先加载热点数据到缓存</li>
+                    <li>避免启动后的初期流量全部打到数据库</li>
+                </ul>
+                
+                <h3>缓存一致性保证</h3>
+                <p><strong>使用版本号机制：</strong></p>
+                
+                <pre style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px;"><code style="color: black; background: white;">
+// 缓存中存储版本号
+cache:trip:{tripID} = {
+  "data": {...},
+  "version": 3
+}
+
+// 查询时检查版本号
+GET cache:trip:{tripID}
+if (cache.version < db.version) {
+  // 缓存版本过旧，删除并重新加载
+  DEL cache:trip:{tripID}
+  // 重新从数据库加载
+}
+                </code></pre>
+                
+                <h3>性能指标</h3>
+                <table>
+                    <tr>
+                        <th>指标</th>
+                        <th>数值</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><strong>缓存命中率</strong></td>
+                        <td>>95%</td>
+                        <td>热门位置占查询 80%，缓存命中率很高</td>
+                    </tr>
+                    <tr>
+                        <td><strong>缓存延迟</strong></td>
+                        <td><10ms</td>
+                        <td>Redis 的单次查询延迟</td>
+                    </tr>
+                    <tr>
+                        <td><strong>数据库延迟</strong></td>
+                        <td><100ms</td>
+                        <td>缓存未命中时的延迟</td>
+                    </tr>
+                    <tr>
+                        <td><strong>总体延迟</strong></td>
+                        <td><50ms</td>
+                        <td>95% 命中率下的平均延迟</td>
+                    </tr>
+                </table>
+                
+                <h3>权衡总结</h3>
+                <div class="answer-box">
+                    <h4>为什么选择 Cache Aside + 版本号？</h4>
+                    <div class="answer-content">
+                        <p><strong>CDC vs 双写：</strong></p>
+                        <ul>
+                            <li>CDC 延迟可接受（<1 秒），系统解耦</li>
+                            <li>双写强一致性，但实现复杂、易出错</li>
+                            <li>我们选择 CDC</li>
+                        </ul>
+                        
+                        <p><strong>Cache Aside vs Write Through：</strong></p>
+                        <ul>
+                            <li>Cache Aside 灵活、可控，缓存失效不影响数据库</li>
+                            <li>Write Through 一致性强，但写入延迟高</li>
+                            <li>我们选择 Cache Aside，因为读操作远多于写操作</li>
+                        </ul>
+                        
+                        <p><strong>结论：</strong>通过 CDC + Cache Aside + 版本号机制，我们可以在高并发下保证数据的最终一致性，同时保持良好的性能。</p>
+                    </div>
+                </div>
+                
+                <div class="interview-tip">
+                    <h4>💡 面试技巧</h4>
+                    <p>面试官可能会问："如果缓存和数据库的数据不一致，用户会看到什么？"</p>
+                    <p><strong>好的回答：</strong>"由于我们使用 Cache Aside 策略，缓存的数据最多延迟 TTL 时间（通常 5 分钟）。对于关键数据（如行程状态），我们使用版本号机制来检测不一致，并主动刷新缓存。这样可以确保用户看到的数据最多延迟 1 秒。"</p>
+                </div>
+            </div>
+            <!-- 第7章 -->
+            <div class="page-content" id="ch7">
+                <h2>第7章：高峰场景</h2>
+                <p>问题：高峰热门位置 QPS 过载。问题：支付集成与异步处理。现象：同步支付高峰期延迟秒级，阻塞匹配服务，用户流失。原因：Stripe 等第三方支付响应慢（网络/验证 200 ms–2 s），高峰写 QPS 100，同步模式放大延迟。</p>
+            </div>
+
+            <div class="page-content" id="ch7-1">
+                <h2>7.1 虚拟队列设计</h2>
+                <ol>
+                    <li><strong>异步支付</strong>：POST /confirm 创建 PaymentIntent，立即返回“支付处理中”，Webhook 异步回调处理。</li>
+                    <li><strong>事务更新</strong>：Webhook 验证 tripID，Cassandra 执行 UPDATE IF status=..., 成功发布 Kafka 事件。</li>
+                    <li><strong>幂等处理</strong>：Webhook 重试，事务检查 status=completed 避免重复。</li>
+                </ol>
+                <p>Payment is async and out-of-critical-path。</p>
+                <p><strong>权衡</strong>：Webhook vs 同步：Webhook 异步、延迟低、解耦服务；同步简单但高峰阻塞。Stripe vs 自建支付：Stripe 高可用、快速集成、合规，费用高；自建灵活但开发复杂。选择：Stripe + Webhook + Kafka，优先可靠性和快速部署。</p>
+                <div class="mermaid">sequenceDiagram
+    participant Client
+    participant MS as Matching Service
+    participant Stripe
+    participant DB as Cassandra
+    participant Kafka
+    participant Prometheus
+
+    Client-&gt;&gt;MS: POST /ride/confirm {tripID, paymentDetails}
+    MS-&gt;&gt;DB: SELECT tripID, status, version FROM Trips
+    alt Trip valid
+        MS-&gt;&gt;Stripe: Create PaymentIntent {amount, currency, metadata: tripID}
+        Stripe--&gt;&gt;MS: PaymentIntent ID
+        MS--&gt;&gt;Client: {status: "pending"}
+        Stripe-&gt;&gt;MS: Webhook: payment_intent.succeeded
+        MS-&gt;&gt;DB: UPDATE Trips SET status='completed', version=version+1 IF version=...
+        alt Update success
+            MS-&gt;&gt;Kafka: Publish payment confirmation {tripID}
+            MS-&gt;&gt;Client: SSE: {tripID, status: "completed"}
+        else Version conflict/expired
+            MS--&gt;&gt;Client: 409 Conflict
+        end
+    else Invalid/expired
+        MS--&gt;&gt;Client: 409 Conflict
+    end
+    MS-&gt;&gt;Prometheus: Record payment latency, failure rate</div>
+            </div>
+
+            <div class="page-content" id="ch7-2">
+                <h2>7.2 并发一致性</h2>
+                <p>问题：并发匹配一致性。现象：高峰期一个司机匹配多次（overmatching），行程错误，用户投诉。原因：分布式高峰 QPS 写请求高，多个请求同时访问同一司机记录。单纯数据库事务在高并发下效率低。</p>
+                <ol>
+                    <li><strong>Redis 分布式锁</strong>：SETNX 锁司机（TTL 3-5 s），快速过滤并发。</li>
+                    <li><strong>轻量级事务</strong>：锁成功后，Cassandra 执行 UPDATE IF version=...，失败回滚。</li>
+                    <li><strong>异步通知</strong>：Kafka 发布匹配成功事件。</li>
+                    <li><strong>错误处理</strong>：锁失败返回 429，事务冲突返回 409，返回司机状态。</li>
+                    <li><strong>监控</strong>：锁冲突率 >1%，事务重试率 >5%，可调整 TTL 或分片策略。</li>
+                </ol>
+                <p><strong>权衡</strong>：SETNX + 轻量级事务：降低 90% 并发冲突，延迟 <100 ms，需管理锁 TTL。纯轻量级事务：简单，但高并发重试率高，延迟 >500 ms。悲观锁：强一致性，单分片 QPS <1 k，高峰易卡顿。选择：SETNX + 轻量级事务，兼顾一致性和性能。</p>
+                <div class="mermaid">sequenceDiagram
+    participant Client
+    participant MS as Matching Service
+    participant Redis
+    participant DB as Cassandra
+    participant Kafka
+    participant Prometheus
+
+    Client-&gt;&gt;MS: POST /ride/request {pickup, dropoff}
+    MS-&gt;&gt;Redis: SETNX lock:driver:{ID} tripID (TTL=3-5s)
+    alt Lock acquired
+        MS-&gt;&gt;DB: SELECT status, version FROM Drivers WHERE driverID=...
+        DB--&gt;&gt;MS: status=available, version=0
+        MS-&gt;&gt;DB: UPDATE Drivers SET status='assigned', version=1 IF version=0
+        alt Update success
+            MS-&gt;&gt;Kafka: Publish matching event
+            MS-&gt;&gt;Redis: DEL lock:driver:{ID}
+            MS--&gt;&gt;Client: {tripID, eta=300}
+        else Version conflict
+            MS-&gt;&gt;Redis: DEL lock:driver:{ID}
+            MS--&gt;&gt;Client: 409 Conflict {details: driver status}
+        end
+    else Lock failed
+        MS--&gt;&gt;Client: 429 Too Many Requests
+    end
+    MS-&gt;&gt;Prometheus: Record lock conflicts, retry rate</div>
+            </div>
+
+            <!-- 第8章 -->
+            <div class="page-content" id="ch8">
+                <h2>第8章：面试策略</h2>
+                <p>整体设计围绕 高并发、高可用、良好用户体验 展开。通过 cell-based spatial index 位置优化、Redis 缓存与队列、分布式锁、异步支付 等手段，系统在百万级 QPS 下依然保持稳定。微服务架构和消息队列保证了 扩展性和解耦性，同时监控和自动伸缩机制让系统在高峰期依然可靠。</p>
+                <p>简而言之，这套方案 既解决性能瓶颈，又确保用户体验和运维可控，适合大规模乘车平台的生产环境。</p>
+            </div>
+
+            <div class="page-content" id="ch8-1">
+                <h2>8.1 如何讲述设计</h2>
+                <p>在面试中，先明确需求边界，然后量化规模，找到瓶颈，最后针对性设计方案。解释每个选择的“为什么”。</p>
+                <div class="interview-tip">
+                    <h4>💼 时间分配建议</h4>
+                    <ul>
+                        <li>5分钟: 澄清需求</li>
+                        <li>5分钟: 容量估算</li>
+                        <li>10分钟: 高层架构</li>
+                        <li>15分钟: 深入关键问题</li>
+                        <li>10分钟: 优化与权衡</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="page-content" id="ch8-2">
+                <h2>8.2 常见追问</h2>
+                <ul>
+                    <li>如何处理高峰流量？</li>
+                    <li>一致性如何保证？</li>
+                    <li>为什么选择这个数据库/缓存？</li>
+                    <li>如果规模翻倍，怎么扩展？</li>
+                </ul>
+                <div class="warning-box">
+                    <h4>⚠️ 常见坑</h4>
+                    <p>不要一上来就列技术栈，要解释原因。广度优先，避免陷入无关细节。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 处理侧边栏导航点击
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                // 移除所有 active 类
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                document.querySelectorAll('.page-content').forEach(content => content.classList.remove('active'));
+
+                // 添加 active 到当前项
+                this.classList.add('active');
+
+                // 显示对应内容
+                const pageId = this.getAttribute('data-page');
+                const targetContent = document.getElementById(pageId);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                }
+            });
+        });
+
+        // 处理答案框展开/收起
+        document.querySelectorAll('.answer-box').forEach(box => {
+            box.addEventListener('click', function() {
+                this.classList.toggle('expanded');
+            });
+        });
+
+        // 处理进度条（基于内容滚动）
+        window.addEventListener('scroll', function() {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('progressBar').style.width = scrolled + '%';
+        });
+    </script>
+</body>
+</html>
