@@ -1,14 +1,14 @@
 ---
 toc:
-sidebar: left
+    sidebar: left
 layout: post
 title: Design Uber
 pretty_table: true
 tabs: true
 mermaid:
-enabled: true
-zoomable: true
-date: "2026-01-04"
+    enabled: true
+    zoomable: true
+date: "2026-01-17"
 description: How to design Uber
 img: assets/img/2026/Uber/designUber.png
 importance: 7
